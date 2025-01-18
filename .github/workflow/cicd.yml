@@ -1,0 +1,31 @@
+name: Deploy Go Application
+
+on:
+  push:
+    branches:
+      - deploy-to-ec2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+      - name: Check .env file
+        run: echo "PORT=${{ secrets.PORT }}" >> .env
+      - name: Login to docker hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build docker image
+        run: docker build -t ansoribra/datingApp .
+      - name: Push image to docker hub
+        run: docker push ansoribra/datingApp:latest
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Pull docker image
+        run: docker pull ansoribra/datingApp:latest
+      - name: Delete old container
+        run: docker rm -f go-app-container
+      - name: Run docker container
+        run: docker run -d -p 4040:4040 --name go-app-container ansoribra/datingApp
